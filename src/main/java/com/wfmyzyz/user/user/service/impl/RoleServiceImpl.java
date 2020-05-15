@@ -11,19 +11,20 @@ import com.wfmyzyz.user.user.service.IRoleAuthorityService;
 import com.wfmyzyz.user.user.service.IRoleService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.wfmyzyz.user.user.service.IUserRoleService;
+import com.wfmyzyz.user.user.service.IUserService;
 import com.wfmyzyz.user.user.vo.authority.TreeAuthorityVo;
 import com.wfmyzyz.user.user.vo.role.AddRoleVo;
 import com.wfmyzyz.user.user.vo.role.SearchRoleVo;
 import com.wfmyzyz.user.user.vo.role.TreeRoleVo;
 import com.wfmyzyz.user.user.vo.role.UpdateRoleVo;
+import com.wfmyzyz.user.utils.RoleUtils;
+import io.swagger.models.auth.In;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * <p>
@@ -40,6 +41,8 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements IR
     private IRoleAuthorityService roleAuthorityService;
     @Autowired
     private IUserRoleService userRoleService;
+    @Autowired
+    private IUserService userService;
 
     @Override
     public boolean addRole(AddRoleVo addRoleVo) {
@@ -71,10 +74,19 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements IR
     }
 
     @Override
-    public List<TreeRoleVo> getRoleList() {
+    public List<TreeRoleVo> getRoleList(Integer userId) {
+        //获取当前用户角色ID
+        Set<Integer> topList = new HashSet<>();
         List<Role> roleList = this.listByOrderCreateTimeAsc();
-        List<TreeRoleVo> treeAuthorityVoList = findSonRole(roleList, ProjectConfig.ROLE_ROOT_ID);
-        return treeAuthorityVoList;
+        List<Integer> roleIdList = userRoleService.listRoleIdByUserId(userId);
+        RoleUtils roleUtils = new RoleUtils(roleList,roleIdList);
+        topList.addAll(roleUtils.getTopList());
+        List<TreeRoleVo> treeRoleVoList = new ArrayList<>();
+        topList.forEach(topId -> {
+            List<TreeRoleVo> sonRole = findSonRole(roleList, topId);
+            treeRoleVoList.addAll(sonRole);
+        });
+        return treeRoleVoList;
     }
 
     /**
@@ -104,10 +116,21 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements IR
     }
 
     @Override
-    public boolean removeByIdsAndSon(List<Integer> ids) {
+    public boolean removeByIdsAndSon(List<Integer> ids, Integer opUserId) {
+        //删除角色只能删除自身角色之下的角色
+        Set<Integer> opRoleIdSet = userRoleService.listCanOpRoleIdByUserId(opUserId);
+        List<Integer> canDeleteRoleId = new ArrayList<>();
+        ids.forEach(id -> {
+            if (opRoleIdSet.contains(id)){
+                canDeleteRoleId.add(id);
+            }
+        });
+        if (canDeleteRoleId.size() <= 0){
+            return true;
+        }
         List<Role> roleList = this.list();
         List<Integer> delIdList = new ArrayList<>();
-        ids.forEach(id -> {
+        canDeleteRoleId.forEach(id -> {
             List<Integer> sonIdList = getSonRoleIdById(roleList, id);
             delIdList.addAll(sonIdList);
             delIdList.add(id);
@@ -117,6 +140,19 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements IR
         //根据角色ID删除用户角色绑定表
         userRoleService.removeByRoleIds(delIdList);
         return this.removeByIds(delIdList);
+    }
+
+    @Override
+    public List<TreeRoleVo> getTreeRoleBindList(Integer userId) {
+        List<TreeRoleVo> intoRoleList = new ArrayList<>();
+        List<TreeRoleVo> roleList = this.getRoleList(userId);
+        if (userService.isAdmin(userId)){
+            return roleList;
+        }
+        roleList.forEach(treeRoleVo -> {
+            intoRoleList.addAll(treeRoleVo.getChildren());
+        });
+        return intoRoleList;
     }
 
     /**

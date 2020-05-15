@@ -43,9 +43,10 @@ public interface IRoleService extends IService<Role> {
 
     /**
      * 获取树形角色列表
+     * @param userId
      * @return
      */
-    List<TreeRoleVo> getRoleList();
+    List<TreeRoleVo> getRoleList(Integer userId);
 
     /**
      * 根据创建时间获取角色列表
@@ -56,7 +57,15 @@ public interface IRoleService extends IService<Role> {
     /**
      * 删除角色与子角色
      * @param ids
+     * @param opUserId
      * @return
      */
-    boolean removeByIdsAndSon(List<Integer> ids);
+    boolean removeByIdsAndSon(List<Integer> ids, Integer opUserId);
+
+    /**
+     * 用户获取绑定树形角色
+     * @param userId
+     * @return
+     */
+    List<TreeRoleVo> getTreeRoleBindList(Integer userId);
 }

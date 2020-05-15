@@ -36,7 +36,7 @@ public interface IRoleAuthorityService extends IService<RoleAuthority> {
      * @param bindRoleAuthorityVo
      * @return
      */
-    Msg bindRoleAuthority(BindRoleAuthorityVo bindRoleAuthorityVo);
+    Msg bindRoleAuthority(BindRoleAuthorityVo bindRoleAuthorityVo,Boolean admin,Integer opUserId);
 
     /**
      * 根据角色ID获取权限关系

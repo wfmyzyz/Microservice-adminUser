@@ -7,9 +7,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.wfmyzyz.user.config.MybatisPlusConfig;
 import com.wfmyzyz.user.config.ProjectConfig;
 import com.wfmyzyz.user.enums.ProjectResEnum;
+import com.wfmyzyz.user.user.domain.Role;
 import com.wfmyzyz.user.user.domain.User;
 import com.wfmyzyz.user.user.enums.UserStatusEnum;
 import com.wfmyzyz.user.user.mapper.UserMapper;
+import com.wfmyzyz.user.user.service.IRoleService;
 import com.wfmyzyz.user.user.service.IUserRoleService;
 import com.wfmyzyz.user.user.service.IUserService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -42,6 +45,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     private RedisUtils redisUtils;
     @Autowired
     private IUserRoleService userRoleService;
+    @Autowired
+    private IRoleService roleService;
 
     @Override
     public Msg addUser(AddUserVo userVo) {
@@ -188,5 +193,60 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //删除用户角色绑定表
         userRoleService.removeByUserIds(ids);
         return this.removeByIds(ids);
+    }
+
+    @Override
+    public boolean judgeUserAContainB(Integer opUserId, Integer userId) {
+        Set<Integer> opRoleIdSet = userRoleService.listCanOpRoleIdByUserId(opUserId);
+        List<Integer> beOpRoleIdList = userRoleService.listRoleIdByUserId(userId);
+        for (Integer roleId: beOpRoleIdList){
+            if (!opRoleIdSet.contains(roleId)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public Msg logout(Integer userId) {
+        String idKey = ProjectConfig.USER + userId;
+        String tokenKey = redisUtils.getValue(idKey);
+        redisUtils.deletStringeKey(idKey);
+        if (StringUtils.isNotBlank(tokenKey)){
+            redisUtils.deletStringeKey(tokenKey);
+        }
+        return Msg.success();
+    }
+
+    @Override
+    public boolean judgeOwnUserAContainRole(Integer opUserId, Integer fRoleId) {
+        Set<Integer> opRoleIdSet = userRoleService.listOwnOpRoleIdByUserId(opUserId);
+        if (opRoleIdSet.contains(fRoleId)){
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean judgeUserAContainRole(Integer opUserId, Integer roleId) {
+        Set<Integer> opRoleIdSet = userRoleService.listCanOpRoleIdByUserId(opUserId);
+        if (opRoleIdSet.contains(roleId)){
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isAdmin(Integer userId) {
+        List<Integer> roleIdList = userRoleService.listRoleIdByUserId(userId);
+        if (roleIdList.size() > 0){
+            List<Role> roleList = roleService.listByIds(roleIdList);
+            for (Role role : roleList) {
+                if (Objects.equals(role.getfRoleId(),ProjectConfig.ROLE_ROOT_ID)){
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

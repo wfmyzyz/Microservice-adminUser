@@ -4,14 +4,17 @@ import com.wfmyzyz.user.enums.ProjectResEnum;
 import com.wfmyzyz.user.user.domain.RoleAuthority;
 import com.wfmyzyz.user.user.domain.UserRole;
 import com.wfmyzyz.user.user.mapper.RoleAuthorityMapper;
+import com.wfmyzyz.user.user.service.IAuthorityService;
 import com.wfmyzyz.user.user.service.IRoleAuthorityService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.wfmyzyz.user.user.vo.authority.BindRoleAuthorityVo;
 import com.wfmyzyz.user.utils.Msg;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -25,6 +28,9 @@ import java.util.stream.Collectors;
 @Service
 public class RoleAuthorityServiceImpl extends ServiceImpl<RoleAuthorityMapper, RoleAuthority> implements IRoleAuthorityService {
 
+    @Autowired
+    private IAuthorityService authorityService;
+
     @Override
     public boolean removeByAuthorityIds(List<Integer> ids) {
         return this.lambdaUpdate().in(RoleAuthority::getAuthorityId,ids).remove();
@@ -36,12 +42,17 @@ public class RoleAuthorityServiceImpl extends ServiceImpl<RoleAuthorityMapper, R
     }
 
     @Override
-    public Msg bindRoleAuthority(BindRoleAuthorityVo bindRoleAuthorityVo) {
+    public Msg bindRoleAuthority(BindRoleAuthorityVo bindRoleAuthorityVo,Boolean admin,Integer opUserId) {
         //没有需要绑定的则为删除所有
         if (bindRoleAuthorityVo.getAuthorityIdList() == null || bindRoleAuthorityVo.getAuthorityIdList().size() <= 0){
-            List<Integer> delUserId = new ArrayList<>();
-            delUserId.add(bindRoleAuthorityVo.getRoleId());
-            this.removeByRoleIds(delUserId);
+            if (admin){
+                List<Integer> delUserId = new ArrayList<>();
+                delUserId.add(bindRoleAuthorityVo.getRoleId());
+                this.removeByRoleIds(delUserId);
+            }else {
+                Set<Integer> authorityId = authorityService.listAuthorityIdByUserId(opUserId);
+                this.removeByIds(authorityId);
+            }
             return Msg.success(ProjectResEnum.USER_ROLE_SUCCESS);
         }
         List<RoleAuthority> roleAuthorityList = this.listByRoleId(bindRoleAuthorityVo.getRoleId());

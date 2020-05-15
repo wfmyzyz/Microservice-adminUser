@@ -75,4 +75,42 @@ public interface IUserService extends IService<User> {
      * @return
      */
     boolean removeUserAndRoleByIds(List<Integer> ids);
+
+    /**
+     * 判断当前操作人员的角色是否都大于被操作人员
+     * @param opUserId
+     * @param userId
+     * @return
+     */
+    boolean judgeUserAContainB(Integer opUserId, Integer userId);
+
+    /**
+     * 用户注销
+     * @param userId
+     * @return
+     */
+    Msg logout(Integer userId);
+
+    /**
+     * 判断当前操作人员的角色是否有一个大于需要被操作的角色(包括自身)
+     * @param opUserId
+     * @param fRoleId
+     * @return
+     */
+    boolean judgeOwnUserAContainRole(Integer opUserId, Integer fRoleId);
+
+    /**
+     * 判断当前操作人员的角色是否有一个大于需要被操作的角色(不包括自身)
+     * @param opUserId
+     * @param roleId
+     * @return
+     */
+    boolean judgeUserAContainRole(Integer opUserId, Integer roleId);
+
+    /**
+     * 判断是否为超级管理员
+     * @param userId
+     * @return
+     */
+    boolean isAdmin(Integer userId);
 }

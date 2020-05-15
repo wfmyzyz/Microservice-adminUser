@@ -6,6 +6,7 @@ import com.wfmyzyz.user.user.service.IAuthorityService;
 import com.wfmyzyz.user.user.service.IRoleAuthorityService;
 import com.wfmyzyz.user.user.vo.api.AuthVo;
 import com.wfmyzyz.user.utils.Msg;
+import com.wfmyzyz.user.utils.RedisUtils;
 import com.wfmyzyz.user.utils.TokenUtils;
 import io.swagger.annotations.Api;
 import org.apache.commons.lang3.StringUtils;
@@ -27,10 +28,16 @@ public class AuthorityApiController {
     private TokenUtils tokenUtils;
     @Autowired
     private IAuthorityService authorityService;
+    @Autowired
+    private RedisUtils redisUtils;
 
     @PostMapping("auth")
     public Msg authAuthority(@RequestBody AuthVo authVo){
         if (StringUtils.isBlank(authVo.getToken())){
+            return Msg.error(ProjectResEnum.LOGIN);
+        }
+        String redisToken = redisUtils.getValue(ProjectConfig.TOKEN + authVo.getToken());
+        if (StringUtils.isBlank(redisToken)){
             return Msg.error(ProjectResEnum.LOGIN);
         }
         Integer userId = tokenUtils.getUserIdByToken(authVo.getToken());

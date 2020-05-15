@@ -6,6 +6,7 @@ import com.wfmyzyz.user.user.service.IUserService;
 import com.wfmyzyz.user.user.vo.api.UserLogin;
 import com.wfmyzyz.user.utils.Msg;
 import com.wfmyzyz.user.utils.RsaUtils;
+import com.wfmyzyz.user.utils.TokenUtils;
 import com.wfmyzyz.user.utils.UserUtils;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -13,6 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.HashMap;
 
@@ -28,6 +30,8 @@ public class LoginApiController {
     private IUserService userService;
     @Autowired
     private UserUtils userUtils;
+    @Autowired
+    private TokenUtils tokenUtils;
 
     /**
      * 获取公钥
@@ -51,5 +55,12 @@ public class LoginApiController {
             return Msg.error(ProjectResEnum.LOGIN_ERROR);
         }
         return userService.login(user.getUsername(),decryptPassword);
+    }
+
+    @ApiOperation(value="用户注销",httpMethod="GET")
+    @GetMapping("logout")
+    public Msg logout(HttpServletRequest request){
+        Integer userId = tokenUtils.getUserIdByRequest(request);
+        return userService.logout(userId);
     }
 }

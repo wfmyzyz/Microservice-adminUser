@@ -22,6 +22,7 @@ public enum ProjectResEnum {
     USER_DELETE_SIZE(20009,"删除的用户ID不能为空！"),
     USER_DELETE_FAIL(20010,"用户删除失败！"),
     USER_DELETE_SUCCESS(200,"用户删除成功！"),
+    USER_DELETE_PART_SUCCESS(200,"用户删除部分成功！"),
     USER_ROLE_SUCCESS(200,"绑定成功！"),
 
     /**

@@ -20,6 +20,7 @@ import javax.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * @author admin
@@ -72,39 +73,74 @@ public class UserBackController {
 
     @ApiOperation(value="根据用户ID修改用户密码" ,httpMethod="POST")
     @PostMapping(value = "/updatePasswordByUserId")
-    public Msg updatePasswordByUserId(@Valid @RequestBody UpdateUserPasswordByIdVo updateUserPasswordByIdVo){
+    public Msg updatePasswordByUserId(@Valid @RequestBody UpdateUserPasswordByIdVo updateUserPasswordByIdVo,HttpServletRequest request){
+        Integer opUserId = tokenUtils.getUserIdByRequest(request);
+        //判断当前操作人员的角色是否都大于被操作人员
+        if(!userService.isAdmin(opUserId) && !userService.judgeUserAContainB(opUserId,updateUserPasswordByIdVo.getUserId())){
+            return Msg.error(ProjectResEnum.NONE_AUTHORITY);
+        }
         return userService.updatePasswordByUserId(updateUserPasswordByIdVo);
     }
 
     @ApiOperation(value="修改用户状态" ,httpMethod="POST")
     @PostMapping(value = "/updateStatus")
-    public Msg updateStatus(@Valid @RequestBody UpdateStatusVo updateStatusVo){
+    public Msg updateStatus(@Valid @RequestBody UpdateStatusVo updateStatusVo,HttpServletRequest request){
+        Integer opUserId = tokenUtils.getUserIdByRequest(request);
+        //判断当前操作人员的角色是否都大于被操作人员
+        if(!userService.isAdmin(opUserId) && !userService.judgeUserAContainB(opUserId,updateStatusVo.getUserId())){
+            return Msg.error(ProjectResEnum.NONE_AUTHORITY);
+        }
         return userService.updateStatus(updateStatusVo);
     }
 
     @ApiOperation(value="删除用户" ,httpMethod="POST")
     @PostMapping(value = "/deleteUser")
-    public Msg deleteUser(@RequestBody List<Integer> ids){
+    public Msg deleteUser(@RequestBody List<Integer> ids,HttpServletRequest request){
         if (ids == null || ids.size() <= 0){
             return Msg.error(ProjectResEnum.USER_DELETE_SIZE);
         }
-        boolean flag = userService.removeUserAndRoleByIds(ids);
+        Integer opUserId = tokenUtils.getUserIdByRequest(request);
+        List<Integer> canRemoveUserId = new ArrayList<>();
+        //过滤出可以删除的用户
+        ids.forEach(id -> {
+            if(userService.judgeUserAContainB(opUserId,id)){
+                canRemoveUserId.add(id);
+            }
+        });
+        if (canRemoveUserId.size() <= 0){
+            return Msg.success(ProjectResEnum.NONE_AUTHORITY);
+        }
+        boolean flag = userService.removeUserAndRoleByIds(canRemoveUserId);
         if (!flag){
             return Msg.error(ProjectResEnum.USER_DELETE_FAIL);
+        }
+        if (canRemoveUserId.size() < ids.size()){
+            return Msg.success(ProjectResEnum.USER_DELETE_PART_SUCCESS);
         }
         return Msg.success(ProjectResEnum.USER_DELETE_SUCCESS);
     }
 
     @ApiOperation(value="绑定用户角色" ,httpMethod="POST")
     @PostMapping(value = "/bindUserRole")
-    public Msg bindUserRole(@Valid @RequestBody BindUserRoleVo bindUserRoleVo){
-        return userRoleService.bindUserRole(bindUserRoleVo);
+    public Msg bindUserRole(@Valid @RequestBody BindUserRoleVo bindUserRoleVo,HttpServletRequest request){
+        Integer opUserId = tokenUtils.getUserIdByRequest(request);
+        //判断当前操作人员的角色是否都大于被操作人员
+        boolean admin = userService.isAdmin(opUserId);
+        if(!admin && !userService.judgeUserAContainB(opUserId,bindUserRoleVo.getUserId())){
+            return Msg.error(ProjectResEnum.NONE_AUTHORITY);
+        }
+        return userRoleService.bindUserRole(opUserId, bindUserRoleVo,admin);
     }
 
     @ApiOperation(value="获取绑定用户角色" ,httpMethod="POST")
     @PostMapping(value = "/getUserRole")
-    public Msg getUserRole(@RequestBody JSONObject params){
+    public Msg getUserRole(@RequestBody JSONObject params,HttpServletRequest request){
         Integer userId = params.getInteger("userId");
+        Integer opUserId = tokenUtils.getUserIdByRequest(request);
+        //判断当前操作人员的角色是否都大于被操作人员
+        if(!userService.isAdmin(opUserId) && !userService.judgeUserAContainB(opUserId,userId)){
+            return Msg.error(ProjectResEnum.NONE_AUTHORITY);
+        }
         List<UserRole> userRoleList = userRoleService.getUserRoleByUserId(userId);
         return Msg.success().add(userRoleList);
     }

@@ -47,6 +47,14 @@ public class AuthorityBackController {
         return Msg.success().add(authorityList);
     }
 
+    @ApiOperation(value="获取角色绑定树形权限列表" ,httpMethod="GET")
+    @GetMapping("getTreeAuthorityBindList")
+    public Msg getTreeAuthorityBindList(HttpServletRequest request){
+        Integer userId = tokenUtils.getUserIdByRequest(request);
+        List<TreeAuthorityVo> authorityList =  authorityService.getTreeAuthorityBindList(userId);
+        return Msg.success().add(authorityList);
+    }
+
     @ApiOperation(value="查询权限列表" ,httpMethod="GET")
     @GetMapping("getAuthorityList")
     public Msg getAuthorityList(@Valid @RequestBody SearchAuthorityVo searchAuthorityVo){

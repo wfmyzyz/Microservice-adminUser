@@ -100,4 +100,18 @@ public interface IAuthorityService extends IService<Authority> {
      * @return
      */
     boolean judgeAuthByUserIdAndUrl(String url, Integer userId);
+
+    /**
+     * 获取角色绑定树形权限列表
+     * @param userId
+     * @return
+     */
+    List<TreeAuthorityVo> getTreeAuthorityBindList(Integer userId);
+
+    /**
+     *
+     * @param authorityIdSet
+     * @return
+     */
+    List<Authority> listByIdsOrderSortAsc(Set<Integer> authorityIdSet);
 }

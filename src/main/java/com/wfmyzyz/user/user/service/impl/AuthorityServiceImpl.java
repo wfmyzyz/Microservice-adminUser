@@ -43,6 +43,8 @@ public class AuthorityServiceImpl extends ServiceImpl<AuthorityMapper, Authority
     private IRoleAuthorityService roleAuthorityService;
     @Autowired
     private IUserRoleService userRoleService;
+    @Autowired
+    private IUserService userService;
 
     @Override
     public Msg addAuthority(AddAuthorityVo addAuthorityVo) {
@@ -301,6 +303,34 @@ public class AuthorityServiceImpl extends ServiceImpl<AuthorityMapper, Authority
             }
         }
         return false;
+    }
+
+    @Override
+    public List<TreeAuthorityVo> getTreeAuthorityBindList(Integer userId) {
+        List<TreeAuthorityVo> treeAuthorityVoList = new ArrayList<>();
+        List<Authority> authorityList;
+        if (!userService.isAdmin(userId)){
+            Set<Integer> authorityIdSet = this.listAuthorityIdByUserId(userId);
+            if (authorityIdSet.size() <= 0){
+                return treeAuthorityVoList;
+            }
+            authorityList = this.listByIdsOrderSortAsc(authorityIdSet);
+        }else {
+            authorityList = this.listByOrderSortAsc();
+        }
+        List<Integer> authorityIdList = authorityList.stream().map(Authority::getAuthorityId).collect(Collectors.toList());
+        List<Integer> fAuthorityIdList = authorityList.stream().map(Authority::getfAuthorityId).collect(Collectors.toList());
+        List<Integer> rootAuthorityIdList = fAuthorityIdList.stream().filter(authorityId -> !authorityIdList.contains(authorityId)).distinct().collect(Collectors.toList());
+        rootAuthorityIdList.forEach(authorityId -> {
+            List<TreeAuthorityVo> intoTreeAuthorityVoList = findSonAuthority(authorityList, authorityId);
+            treeAuthorityVoList.addAll(intoTreeAuthorityVoList);
+        });
+        return treeAuthorityVoList;
+    }
+
+    @Override
+    public List<Authority> listByIdsOrderSortAsc(Set<Integer> authorityIdSet) {
+        return this.lambdaQuery().in(Authority::getAuthorityId,authorityIdSet).orderByAsc(Authority::getSort).list();
     }
 
     /**

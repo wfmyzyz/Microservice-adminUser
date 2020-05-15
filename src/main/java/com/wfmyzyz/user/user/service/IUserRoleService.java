@@ -6,6 +6,7 @@ import com.wfmyzyz.user.user.vo.user.BindUserRoleVo;
 import com.wfmyzyz.user.utils.Msg;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * <p>
@@ -33,10 +34,12 @@ public interface IUserRoleService extends IService<UserRole> {
 
     /**
      * 绑定用户角色
+     * @param opUserId
      * @param bindUserRoleVo
+     * @param admin
      * @return
      */
-    Msg bindUserRole(BindUserRoleVo bindUserRoleVo);
+    Msg bindUserRole(Integer opUserId, BindUserRoleVo bindUserRoleVo,Boolean admin);
 
     /**
      * 根据用户ID获取绑定角色关系
@@ -66,4 +69,18 @@ public interface IUserRoleService extends IService<UserRole> {
      * @return
      */
     List<Integer> listRoleIdByUserId(Integer userId);
+
+    /**
+     * 根据用户ID获取角色ID(包括自己)
+     * @param userId
+     * @return
+     */
+    Set<Integer> listOwnOpRoleIdByUserId(Integer userId);
+
+    /**
+     * 根据用户ID获取所有子角色ID
+     * @param opUserId
+     * @return
+     */
+    Set<Integer> listCanOpRoleIdByUserId(Integer opUserId);
 }

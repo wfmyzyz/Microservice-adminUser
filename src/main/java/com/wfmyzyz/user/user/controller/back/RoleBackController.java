@@ -9,6 +9,7 @@ import com.wfmyzyz.user.user.domain.RoleAuthority;
 import com.wfmyzyz.user.user.domain.UserRole;
 import com.wfmyzyz.user.user.service.IRoleAuthorityService;
 import com.wfmyzyz.user.user.service.IRoleService;
+import com.wfmyzyz.user.user.service.IUserService;
 import com.wfmyzyz.user.user.vo.authority.BindRoleAuthorityVo;
 import com.wfmyzyz.user.user.vo.authority.TreeAuthorityVo;
 import com.wfmyzyz.user.user.vo.role.AddRoleVo;
@@ -17,11 +18,14 @@ import com.wfmyzyz.user.user.vo.role.TreeRoleVo;
 import com.wfmyzyz.user.user.vo.role.UpdateRoleVo;
 import com.wfmyzyz.user.user.vo.user.BindUserRoleVo;
 import com.wfmyzyz.user.utils.Msg;
+import com.wfmyzyz.user.utils.TokenUtils;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,11 +39,24 @@ public class RoleBackController {
     private IRoleService roleService;
     @Autowired
     private IRoleAuthorityService roleAuthorityService;
+    @Autowired
+    private TokenUtils tokenUtils;
+    @Autowired
+    private IUserService userService;
 
     @ApiOperation(value="树形角色列表" ,httpMethod="GET")
     @GetMapping("getTreeRoleList")
-    public Msg getTreeRoleList(){
-        List<TreeRoleVo> roleList =  roleService.getRoleList();
+    public Msg getTreeRoleList(HttpServletRequest request){
+        Integer userId = tokenUtils.getUserIdByRequest(request);
+        List<TreeRoleVo> roleList =  roleService.getRoleList(userId);
+        return Msg.success().add(roleList);
+    }
+
+    @ApiOperation(value="用户绑定角色树型列表" ,httpMethod="GET")
+    @GetMapping("getTreeRoleBindList")
+    public Msg getTreeRoleBindList(HttpServletRequest request){
+        Integer userId = tokenUtils.getUserIdByRequest(request);
+        List<TreeRoleVo> roleList = roleService.getTreeRoleBindList(userId);
         return Msg.success().add(roleList);
     }
 
@@ -52,7 +69,12 @@ public class RoleBackController {
 
     @ApiOperation(value="添加角色" ,httpMethod="POST")
     @PostMapping("addRole")
-    public Msg addRole(@Valid @RequestBody AddRoleVo addRoleVo){
+    public Msg addRole(@Valid @RequestBody AddRoleVo addRoleVo,HttpServletRequest request){
+        Integer opUserId = tokenUtils.getUserIdByRequest(request);
+        //判断当前操作人员的角色是否有一个大于需要新增的角色
+        if(!userService.judgeOwnUserAContainRole(opUserId,addRoleVo.getFRoleId())){
+            return Msg.error(ProjectResEnum.NONE_AUTHORITY);
+        }
         boolean flag = roleService.addRole(addRoleVo);
         if (!flag){
             return Msg.error(ProjectResEnum.ROLE_ADD_FAIL);
@@ -62,7 +84,12 @@ public class RoleBackController {
 
     @ApiOperation(value="修改角色" ,httpMethod="POST")
     @PostMapping("updateRole")
-    public Msg updateRole(@Valid @RequestBody UpdateRoleVo updateRoleVo){
+    public Msg updateRole(@Valid @RequestBody UpdateRoleVo updateRoleVo,HttpServletRequest request){
+        Integer opUserId = tokenUtils.getUserIdByRequest(request);
+        //判断当前操作人员的角色是否有一个大于需要新增的角色
+        if(!userService.isAdmin(opUserId) && !userService.judgeUserAContainRole(opUserId,updateRoleVo.getRoleId())){
+            return Msg.error(ProjectResEnum.NONE_AUTHORITY);
+        }
         boolean flag = roleService.updateRole(updateRoleVo);
         if (!flag){
             return Msg.error(ProjectResEnum.ROLE_UPDATE_FAIL);
@@ -72,11 +99,12 @@ public class RoleBackController {
 
     @ApiOperation(value="删除角色" ,httpMethod="POST")
     @PostMapping("deleteRole")
-    public Msg deleteRole(@RequestBody List<Integer> ids){
+    public Msg deleteRole(@RequestBody List<Integer> ids,HttpServletRequest request){
         if (ids == null || ids.size() <= 0){
             return Msg.error(ProjectResEnum.ROLE_DELETE_SIZE);
         }
-        boolean flag = roleService.removeByIdsAndSon(ids);
+        Integer opUserId = tokenUtils.getUserIdByRequest(request);
+        boolean flag = roleService.removeByIdsAndSon(ids, opUserId);
         if (!flag){
             return Msg.error(ProjectResEnum.ROLE_DELETE_FAIL);
         }
@@ -85,14 +113,25 @@ public class RoleBackController {
 
     @ApiOperation(value="绑定角色权限" ,httpMethod="POST")
     @PostMapping(value = "/bindRoleAuthority")
-    public Msg bindRoleAuthority(@Valid @RequestBody BindRoleAuthorityVo bindRoleAuthorityVo){
-        return roleAuthorityService.bindRoleAuthority(bindRoleAuthorityVo);
+    public Msg bindRoleAuthority(@Valid @RequestBody BindRoleAuthorityVo bindRoleAuthorityVo,HttpServletRequest request){
+        Integer opUserId = tokenUtils.getUserIdByRequest(request);
+        //判断当前操作人员的角色是否有一个大于需要需要绑定的角色
+        boolean admin = userService.isAdmin(opUserId);
+        if(!admin && !userService.judgeUserAContainRole(opUserId,bindRoleAuthorityVo.getRoleId())){
+            return Msg.error(ProjectResEnum.NONE_AUTHORITY);
+        }
+        return roleAuthorityService.bindRoleAuthority(bindRoleAuthorityVo,admin,opUserId);
     }
 
     @ApiOperation(value="获取绑定角色权限" ,httpMethod="POST")
     @PostMapping(value = "/getRoleAuthority")
-    public Msg getUserRole(@RequestBody JSONObject params){
+    public Msg getUserRole(@RequestBody JSONObject params,HttpServletRequest request){
         Integer roleId = params.getInteger("roleId");
+        Integer opUserId = tokenUtils.getUserIdByRequest(request);
+        //判断当前操作人员的角色是否有一个大于需要需要绑定的角色
+        if(!userService.isAdmin(opUserId) && !userService.judgeUserAContainRole(opUserId,roleId)){
+            return Msg.error(ProjectResEnum.NONE_AUTHORITY);
+        }
         List<RoleAuthority> roleAuthorityList = roleAuthorityService.getRoleAuthorityByRoleId(roleId);
         return Msg.success().add(roleAuthorityList);
     }
